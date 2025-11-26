@@ -123,6 +123,9 @@ export const addMediaToList = async (
   const user = auth.currentUser;
   if (!user) return false;
 
+  const startTime = Date.now();
+  console.log("⏱️ [ADD] Iniciando...");
+
   try {
     const docToAdd = {
       userId: user.uid,
@@ -131,20 +134,24 @@ export const addMediaToList = async (
       updatedAt: Timestamp.now(),
     };
 
+    console.log("⏱️ [ADD] Salvando no Firestore...");
     const docRef = await addDoc(collection(db, "userMedia"), docToAdd);
+    console.log(`⏱️ [ADD] Salvo! Tempo: ${Date.now() - startTime}ms`);
 
     // Atualizar cache imediatamente
     if (cacheUserId === user.uid) {
       mediaCache.push({ id: docRef.id, ...docToAdd });
+      console.log("⏱️ [ADD] Cache atualizado!");
     }
 
+    console.log(`✅ [ADD] Total: ${Date.now() - startTime}ms`);
     return true;
   } catch (error) {
-    console.error("❌ Erro ao adicionar mídia:", error);
+    console.error("❌ [ADD] Erro:", error);
+    console.log(`⏱️ [ADD] Tempo até erro: ${Date.now() - startTime}ms`);
     return false;
   }
 };
-
 export const removeMediaFromList = async (
   mediaId: number,
   mediaType: "movie" | "tv"
@@ -204,6 +211,7 @@ export const getUserMedia = async (
   if (!user) return [];
 
   const now = Date.now();
+  const startTime = Date.now();
 
   // Usar cache se disponível e válido
   if (
@@ -212,6 +220,11 @@ export const getUserMedia = async (
     mediaCache.length > 0 &&
     now - cacheTime < CACHE_DURATION
   ) {
+    console.log(
+      `⚡ [GET] Usando CACHE! ${mediaCache.length} itens (${
+        Date.now() - startTime
+      }ms)`
+    );
     let items = [...mediaCache];
 
     // Filtrar no lado do cliente
@@ -226,12 +239,21 @@ export const getUserMedia = async (
     return items;
   }
 
+  console.log("⏱️ [GET] Cache vazio ou expirado. Buscando do Firestore...");
+
   try {
     const q = query(
       collection(db, "userMedia"),
       where("userId", "==", user.uid)
     );
+
+    console.log("⏱️ [GET] Executando query...");
     const snapshot = await getDocs(q);
+    console.log(
+      `⏱️ [GET] Query concluída: ${snapshot.size} docs (${
+        Date.now() - startTime
+      }ms)`
+    );
 
     let items = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -242,6 +264,7 @@ export const getUserMedia = async (
     mediaCache = items;
     cacheUserId = user.uid;
     cacheTime = now;
+    console.log(`⏱️ [GET] Cache atualizado com ${items.length} itens`);
 
     // Filtrar no lado do cliente
     if (status) {
@@ -252,13 +275,14 @@ export const getUserMedia = async (
       items = items.filter((item) => item.listName === listName);
     }
 
+    console.log(`✅ [GET] Total: ${Date.now() - startTime}ms`);
     return items;
   } catch (error) {
-    console.error("❌ Erro ao buscar mídia do usuário:", error);
+    console.error("❌ [GET] Erro:", error);
+    console.log(`⏱️ [GET] Tempo até erro: ${Date.now() - startTime}ms`);
     return [];
   }
 };
-
 export const checkIfMediaInList = async (
   mediaId: number,
   mediaType: "movie" | "tv"

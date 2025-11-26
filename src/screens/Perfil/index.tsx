@@ -2,7 +2,7 @@ import { themas } from "@/global/themas";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { signOut, updatePassword, updateProfile } from "firebase/auth";
-import { get, getDatabase, ref, update } from "firebase/database";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth } from "../../../firebase/firebaseConfig";
+import { auth, db } from "../../../firebase/firebaseConfig";
 import styles from "./styles";
 
 export default function Perfil() {
@@ -77,14 +77,13 @@ export default function Perfil() {
       setEmail(user.email || "");
       setNome(user.displayName || "");
 
-      // Buscar dados do Realtime Database
-      const database = getDatabase();
-      const userRef = ref(database, "users/" + user.uid);
-      const snapshot = await get(userRef);
+      // Buscar dados do Firestore
+      const userRef = doc(db, "users", user.uid);
+      const snapshot = await getDoc(userRef);
 
       if (snapshot.exists()) {
-        const userData = snapshot.val();
-        console.log("📊 Dados do banco:", userData);
+        const userData = snapshot.data();
+        console.log("📊 Dados do Firestore:", userData);
         setUsername(userData.username || "");
         setNome(userData.nome || user.displayName || "");
       }
@@ -128,15 +127,14 @@ export default function Perfil() {
       await updateProfile(user, { displayName: nome });
       console.log("✅ DisplayName atualizado");
 
-      // Atualizar dados no Realtime Database
-      const database = getDatabase();
-      const userRef = ref(database, "users/" + user.uid);
-      await update(userRef, {
+      // Atualizar dados no Firestore
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
         nome,
         username,
         atualizadoEm: new Date().toISOString(),
       });
-      console.log("✅ Dados do banco atualizados");
+      console.log("✅ Dados do Firestore atualizados");
 
       // Atualizar senha se fornecida
       if (novaSenha) {

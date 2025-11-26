@@ -1,20 +1,17 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
- apiKey: "AIzaSyC8fLIOkN713ENGpvpZOGN9JhkWRB9FYSM",
-  authDomain: "kingmidia-29f70.firebaseapp.com",
-  projectId: "kingmidia-29f70",
-  storageBucket: "kingmidia-29f70.firebasestorage.app",
-  messagingSenderId: "999419914483",
-  appId: "1:999419914483:web:8bd6359177dc03c10aaf86",
-  measurementId: "G-GC0963V602"
+  apiKey: "AIzaSyAI3ivXIVthDNum-icJy0-w4hwUQPb4Onk",
+  authDomain: "king-media-3cbc2.firebaseapp.com",
+  projectId: "king-media-3cbc2",
+  storageBucket: "king-media-3cbc2.firebasestorage.app",
+  messagingSenderId: "701998461358",
+  appId: "1:701998461358:web:b02d0e310593825d49d83f",
 };
 
 const app = initializeApp(firebaseConfig);
 
-
 export const auth = getAuth(app);
-export const db = getFirestore(app); 
-
+export const db = getFirestore(app);
