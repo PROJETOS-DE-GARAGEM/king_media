@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, Tabs } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { auth } from "../../firebase/firebaseConfig";
 
 export default function TabLayout() {
@@ -55,6 +55,7 @@ export default function TabLayout() {
         name="menu"
         options={{
           headerShown: false,
+          title: "Home",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" color={color} size={size} />
           ),
@@ -64,22 +65,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="add"
         options={{
-          title: "",
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              onPress={() => router.push("/criarMidia")}
-              style={{
-                top: -20,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Ionicons
-                name="add-circle"
-                size={50}
-                color={themas.colors.Secondary}
-              />
-            </TouchableOpacity>
+          headerShown: false,
+          title: "Minhas Listas",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bookmarks" color={color} size={size} />
           ),
         }}
       />

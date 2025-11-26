@@ -1,7 +1,7 @@
 import { themas } from "@/global/themas";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,79 +13,146 @@ import {
 } from "react-native";
 import CardSeries from "../../components/CardSeries";
 import Header from "../../components/Header";
+import StatCard from "../../components/StatCard";
 import {
-  getActionMovies,
   getAnimes,
-  getComedies,
   getDocumentaries,
-  getDramas,
   getGenres,
-  getHorrorMovies,
   getImageUrl,
+  getNewReleases,
   getPopularMovies,
   getPopularTVShows,
+  getRecommendationsForUser,
+  getSoapOperas,
   getTitle,
   MediaItem,
 } from "../../services/tmdb";
+import { getUserMedia } from "../../services/userMedia";
 import styles from "./style";
 
 type CategoryFilter =
   | "todos"
+  | "lancamentos"
   | "filmes"
   | "series"
   | "animes"
+  | "novelas"
   | "documentarios";
 
 export default function Home() {
   const router = useRouter();
+  const [newReleases, setNewReleases] = useState<MediaItem[]>([]);
   const [movies, setMovies] = useState<MediaItem[]>([]);
   const [tvShows, setTVShows] = useState<MediaItem[]>([]);
   const [animes, setAnimes] = useState<MediaItem[]>([]);
+  const [soapOperas, setSoapOperas] = useState<MediaItem[]>([]);
   const [documentaries, setDocumentaries] = useState<MediaItem[]>([]);
-  const [dramas, setDramas] = useState<MediaItem[]>([]);
-  const [actionMovies, setActionMovies] = useState<MediaItem[]>([]);
-  const [comedies, setComedies] = useState<MediaItem[]>([]);
-  const [horrorMovies, setHorrorMovies] = useState<MediaItem[]>([]);
+  const [recommendations, setRecommendations] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] =
     useState<CategoryFilter>("todos");
 
+  // Estatísticas do usuário
+  const [stats, setStats] = useState({
+    totalItems: 0,
+    watching: 0,
+    completed: 0,
+    wantToWatch: 0,
+    favoriteGenre: "N/A",
+  });
+
   useEffect(() => {
     loadContent();
   }, []);
+
+  // Recarregar estatísticas sempre que a tela ganhar foco
+  useFocusEffect(
+    useCallback(() => {
+      loadUserStats();
+    }, [])
+  );
+
+  const loadUserStats = async () => {
+    try {
+      const userMedia = await getUserMedia();
+
+      // Calcular estatísticas
+      const totalItems = userMedia.length;
+      const watching = userMedia.filter(
+        (item) => item.status === "assistindo"
+      ).length;
+      const completed = userMedia.filter(
+        (item) => item.status === "assistido"
+      ).length;
+      const wantToWatch = userMedia.filter(
+        (item) => item.status === "quero_assistir"
+      ).length;
+
+      // Calcular gênero favorito
+      const genreCounts: { [key: string]: number } = {};
+      userMedia.forEach((item) => {
+        if (item.genres && Array.isArray(item.genres)) {
+          item.genres.forEach((genre) => {
+            if (genre) {
+              genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+            }
+          });
+        }
+      });
+
+      const favoriteGenre =
+        Object.keys(genreCounts).length > 0
+          ? Object.entries(genreCounts).sort(([, a], [, b]) => b - a)[0][0]
+          : "N/A";
+
+      setStats({
+        totalItems,
+        watching,
+        completed,
+        wantToWatch,
+        favoriteGenre,
+      });
+
+      // Carregar recomendações baseadas no que foi assistido
+      const watchedMedia = userMedia
+        .filter((item) => item.status === "assistido")
+        .map((item) => ({ id: item.mediaId, type: item.mediaType }));
+
+      if (watchedMedia.length > 0) {
+        const recs = await getRecommendationsForUser(watchedMedia);
+        setRecommendations(recs);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar estatísticas:", error);
+    }
+  };
 
   const loadContent = async () => {
     try {
       setLoading(true);
       const [
+        newReleasesData,
         moviesData,
         tvShowsData,
         animesData,
+        soapOperasData,
         documentariesData,
-        dramasData,
-        actionMoviesData,
-        comediesData,
-        horrorMoviesData,
       ] = await Promise.all([
+        getNewReleases(),
         getPopularMovies(),
         getPopularTVShows(),
         getAnimes(),
+        getSoapOperas(),
         getDocumentaries(),
-        getDramas(),
-        getActionMovies(),
-        getComedies(),
-        getHorrorMovies(),
       ]);
 
+      setNewReleases(newReleasesData);
       setMovies(moviesData);
       setTVShows(tvShowsData);
       setAnimes(animesData);
+      setSoapOperas(soapOperasData);
       setDocumentaries(documentariesData);
-      setDramas(dramasData);
-      setActionMovies(actionMoviesData);
-      setComedies(comediesData);
-      setHorrorMovies(horrorMoviesData);
     } catch (error) {
       console.error("Erro ao carregar conteúdo:", error);
     } finally {
@@ -95,9 +162,11 @@ export default function Home() {
 
   const categories = [
     { key: "todos", label: "Todos" },
+    { key: "lancamentos", label: "Lançamentos" },
     { key: "filmes", label: "Filmes" },
     { key: "series", label: "Séries" },
     { key: "animes", label: "Animes" },
+    { key: "novelas", label: "Novelas" },
     { key: "documentarios", label: "Documentários" },
   ];
 
@@ -113,39 +182,32 @@ export default function Home() {
   };
 
   // Aplicar filtro de pesquisa
+  const filteredNewReleases = filterBySearch(newReleases);
   const filteredMovies = filterBySearch(movies);
   const filteredTVShows = filterBySearch(tvShows);
   const filteredAnimes = filterBySearch(animes);
+  const filteredSoapOperas = filterBySearch(soapOperas);
   const filteredDocumentaries = filterBySearch(documentaries);
-  const filteredDramas = filterBySearch(dramas);
-  const filteredActionMovies = filterBySearch(actionMovies);
-  const filteredComedies = filterBySearch(comedies);
-  const filteredHorrorMovies = filterBySearch(horrorMovies);
 
   // Combinar todos os resultados da pesquisa
   const getAllSearchResults = (): MediaItem[] => {
     if (!searchQuery.trim()) return [];
 
     const allResults = [
+      ...filteredNewReleases.map((item) => ({
+        ...item,
+        category: "Lançamentos",
+      })),
       ...filteredMovies.map((item) => ({
         ...item,
         category: "Filmes Populares",
       })),
-      ...filteredActionMovies.map((item) => ({
-        ...item,
-        category: "Filmes de Ação",
-      })),
-      ...filteredComedies.map((item) => ({ ...item, category: "Comédias" })),
-      ...filteredHorrorMovies.map((item) => ({ ...item, category: "Terror" })),
       ...filteredTVShows.map((item) => ({
         ...item,
         category: "Séries Populares",
       })),
-      ...filteredDramas.map((item) => ({
-        ...item,
-        category: "Dramas & Novelas",
-      })),
       ...filteredAnimes.map((item) => ({ ...item, category: "Animes" })),
+      ...filteredSoapOperas.map((item) => ({ ...item, category: "Novelas" })),
       ...filteredDocumentaries.map((item) => ({
         ...item,
         category: "Documentários",
@@ -182,16 +244,6 @@ export default function Home() {
       <View style={styles.headerSection}>
         <View style={styles.headerTop}>
           <Text style={styles.headerTitle}>KingMedia</Text>
-          <TouchableOpacity
-            style={styles.myListButton}
-            onPress={() => router.push("/minhaLista")}
-          >
-            <MaterialIcons
-              name="bookmarks"
-              size={24}
-              color={themas.colors.Secondary}
-            />
-          </TouchableOpacity>
         </View>
         <View style={styles.searchContainer}>
           <MaterialIcons name="search" size={20} color="#999" />
@@ -272,85 +324,108 @@ export default function Home() {
           </View>
         ) : (
           <>
+            {/* Dashboard com Estatísticas */}
+            {stats.totalItems > 0 && (
+              <View style={styles.dashboardContainer}>
+                <Text style={styles.dashboardTitle}>📊 Suas Estatísticas</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.statsScroll}
+                >
+                  <StatCard
+                    icon="movie"
+                    title="Total"
+                    value={stats.totalItems}
+                    subtitle="na sua lista"
+                    color={themas.colors.Secondary}
+                  />
+                  <StatCard
+                    icon="play-circle-filled"
+                    title="Assistindo"
+                    value={stats.watching}
+                    subtitle="em progresso"
+                    color="#4CAF50"
+                  />
+                  <StatCard
+                    icon="check-circle"
+                    title="Concluídos"
+                    value={stats.completed}
+                    subtitle="finalizados"
+                    color="#2196F3"
+                  />
+                  <StatCard
+                    icon="bookmark"
+                    title="Quero Ver"
+                    value={stats.wantToWatch}
+                    subtitle="na fila"
+                    color="#FF9800"
+                  />
+                  <StatCard
+                    icon="stars"
+                    title="Favorito"
+                    value={stats.favoriteGenre}
+                    subtitle="gênero"
+                    color="#E91E63"
+                  />
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Recomendações Personalizadas */}
+            {recommendations.length > 0 && (
+              <>
+                <Header title="✨ Recomendado Para Você" />
+                <FlatList
+                  data={recommendations}
+                  horizontal
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <CardSeries
+                      id={item.id}
+                      title={getTitle(item)}
+                      genre={getGenres(item.genre_ids)}
+                      image={getImageUrl(item.poster_path)}
+                      type={item.title ? "movie" : "tv"}
+                    />
+                  )}
+                  contentContainerStyle={styles.list}
+                  showsHorizontalScrollIndicator={false}
+                />
+              </>
+            )}
+
+            {/* Lançamentos */}
+            {(selectedCategory === "todos" ||
+              selectedCategory === "lancamentos") && (
+              <>
+                <Header title="🎬 Lançamentos" />
+                <FlatList
+                  data={filteredNewReleases}
+                  horizontal
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <CardSeries
+                      id={item.id}
+                      title={getTitle(item)}
+                      genre={getGenres(item.genre_ids)}
+                      image={getImageUrl(item.poster_path)}
+                      type={item.title ? "movie" : "tv"}
+                    />
+                  )}
+                  contentContainerStyle={styles.list}
+                  showsHorizontalScrollIndicator={false}
+                />
+              </>
+            )}
+
             {/* Filmes Populares */}
             {(selectedCategory === "todos" ||
               selectedCategory === "filmes") && (
               <>
-                <Header title="Filmes Populares" />
+                <Header title="🎥 Filmes Populares" />
                 <FlatList
                   data={filteredMovies}
-                  horizontal
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <CardSeries
-                      id={item.id}
-                      title={getTitle(item)}
-                      genre={getGenres(item.genre_ids)}
-                      image={getImageUrl(item.poster_path)}
-                      type="movie"
-                    />
-                  )}
-                  contentContainerStyle={styles.list}
-                  showsHorizontalScrollIndicator={false}
-                />
-              </>
-            )}
-
-            {/* Filmes de Ação */}
-            {(selectedCategory === "todos" ||
-              selectedCategory === "filmes") && (
-              <>
-                <Header title="Filmes de Ação" />
-                <FlatList
-                  data={filteredActionMovies}
-                  horizontal
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <CardSeries
-                      id={item.id}
-                      title={getTitle(item)}
-                      genre={getGenres(item.genre_ids)}
-                      image={getImageUrl(item.poster_path)}
-                      type="movie"
-                    />
-                  )}
-                  contentContainerStyle={styles.list}
-                  showsHorizontalScrollIndicator={false}
-                />
-              </>
-            )}
-
-            {/* Comédias */}
-            {(selectedCategory === "todos" ||
-              selectedCategory === "filmes") && (
-              <>
-                <Header title="Comédias" />
-                <FlatList
-                  data={filteredComedies}
-                  horizontal
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <CardSeries
-                      id={item.id}
-                      title={getTitle(item)}
-                      genre={getGenres(item.genre_ids)}
-                      image={getImageUrl(item.poster_path)}
-                      type="movie"
-                    />
-                  )}
-                  contentContainerStyle={styles.list}
-                  showsHorizontalScrollIndicator={false}
-                />
-              </>
-            )}
-
-            {/* Terror */}
-            {(selectedCategory === "todos" ||
-              selectedCategory === "filmes") && (
-              <>
-                <Header title="Terror" />
-                <FlatList
-                  data={filteredHorrorMovies}
                   horizontal
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={({ item }) => (
@@ -372,33 +447,9 @@ export default function Home() {
             {(selectedCategory === "todos" ||
               selectedCategory === "series") && (
               <>
-                <Header title="Séries Populares" />
+                <Header title="📺 Séries Populares" />
                 <FlatList
                   data={filteredTVShows}
-                  horizontal
-                  keyExtractor={(item) => item.id.toString()}
-                  renderItem={({ item }) => (
-                    <CardSeries
-                      id={item.id}
-                      title={getTitle(item)}
-                      genre={getGenres(item.genre_ids)}
-                      image={getImageUrl(item.poster_path)}
-                      type="tv"
-                    />
-                  )}
-                  contentContainerStyle={styles.list}
-                  showsHorizontalScrollIndicator={false}
-                />
-              </>
-            )}
-
-            {/* Dramas/Novelas */}
-            {(selectedCategory === "todos" ||
-              selectedCategory === "series") && (
-              <>
-                <Header title="Dramas & Novelas" />
-                <FlatList
-                  data={filteredDramas}
                   horizontal
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={({ item }) => (
@@ -420,9 +471,33 @@ export default function Home() {
             {(selectedCategory === "todos" ||
               selectedCategory === "animes") && (
               <>
-                <Header title="Animes" />
+                <Header title="🎌 Animes" />
                 <FlatList
                   data={filteredAnimes}
+                  horizontal
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <CardSeries
+                      id={item.id}
+                      title={getTitle(item)}
+                      genre={getGenres(item.genre_ids)}
+                      image={getImageUrl(item.poster_path)}
+                      type="tv"
+                    />
+                  )}
+                  contentContainerStyle={styles.list}
+                  showsHorizontalScrollIndicator={false}
+                />
+              </>
+            )}
+
+            {/* Novelas */}
+            {(selectedCategory === "todos" ||
+              selectedCategory === "novelas") && (
+              <>
+                <Header title="📖 Novelas" />
+                <FlatList
+                  data={filteredSoapOperas}
                   horizontal
                   keyExtractor={(item) => item.id.toString()}
                   renderItem={({ item }) => (
@@ -444,7 +519,7 @@ export default function Home() {
             {(selectedCategory === "todos" ||
               selectedCategory === "documentarios") && (
               <>
-                <Header title="Documentários" />
+                <Header title="🎞️ Documentários" />
                 <FlatList
                   data={filteredDocumentaries}
                   horizontal

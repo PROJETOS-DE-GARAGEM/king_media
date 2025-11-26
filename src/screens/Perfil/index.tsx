@@ -178,6 +178,48 @@ export default function Perfil() {
     }
   };
 
+  const handleClearAllData = () => {
+    Alert.alert(
+      "⚠️ Limpar Todos os Dados",
+      "Isso vai remover TODOS os filmes, séries, listas e progresso. Esta ação não pode ser desfeita!\n\nDeseja continuar?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Limpar Tudo",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { clearAllUserData } = await import(
+                "../../services/userMedia"
+              );
+              const success = await clearAllUserData();
+
+              if (success) {
+                Alert.alert("✅ Sucesso", "Todos os dados foram removidos!", [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      loadStats();
+                      router.push("/(tabs)/menu");
+                    },
+                  },
+                ]);
+              } else {
+                Alert.alert("❌ Erro", "Não foi possível limpar os dados");
+              }
+            } catch (error) {
+              console.error("❌ Erro ao limpar dados:", error);
+              Alert.alert("❌ Erro", "Não foi possível limpar os dados");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleLogout = () => {
     Alert.alert("Sair", "Deseja realmente sair da sua conta?", [
       {
@@ -427,6 +469,23 @@ export default function Perfil() {
                   color={themas.colors.Secondary}
                 />
                 <Text style={styles.optionText}>Minha Lista</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color="#666" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={handleClearAllData}
+            >
+              <View style={styles.optionLeft}>
+                <MaterialIcons
+                  name="delete-forever"
+                  size={24}
+                  color="#FF3B30"
+                />
+                <Text style={[styles.optionText, { color: "#FF3B30" }]}>
+                  Limpar Todos os Dados
+                </Text>
               </View>
               <MaterialIcons name="chevron-right" size={24} color="#666" />
             </TouchableOpacity>
