@@ -11,15 +11,15 @@ export default function TabLayout() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("👤 Auth state changed:", user?.uid || "Não logado");
+      // console.log("👤 Auth state changed:", user?.uid || "Não logado");
 
       setLoading(false);
 
       if (!user) {
-        console.log("⚠️ Usuário não autenticado, redirecionando para login...");
+        // console.log("⚠️ Usuário não autenticado, redirecionando para login...");
         setTimeout(() => router.replace("/login"), 100);
       } else {
-        console.log("✅ Usuário autenticado, permanecendo no menu");
+        // console.log("✅ Usuário autenticado, permanecendo no menu");
       }
     });
 

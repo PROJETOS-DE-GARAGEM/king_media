@@ -71,7 +71,7 @@ export default function Perfil() {
         return;
       }
 
-      console.log("👤 Carregando dados do usuário:", user.uid);
+      // console.log("👤 Carregando dados do usuário:", user.uid);
 
       // Dados do Firebase Auth
       setEmail(user.email || "");
@@ -83,7 +83,7 @@ export default function Perfil() {
 
       if (snapshot.exists()) {
         const userData = snapshot.data();
-        console.log("📊 Dados do Firestore:", userData);
+        // console.log("📊 Dados do Firestore:", userData);
         setUsername(userData.username || "");
         setNome(userData.nome || user.displayName || "");
       }
@@ -121,11 +121,11 @@ export default function Perfil() {
         return;
       }
 
-      console.log("💾 Salvando alterações...");
+      // console.log("💾 Salvando alterações...");
 
       // Atualizar displayName no Auth
       await updateProfile(user, { displayName: nome });
-      console.log("✅ DisplayName atualizado");
+      // console.log("✅ DisplayName atualizado");
 
       // Atualizar dados no Firestore
       const userRef = doc(db, "users", user.uid);
@@ -134,12 +134,12 @@ export default function Perfil() {
         username,
         atualizadoEm: new Date().toISOString(),
       });
-      console.log("✅ Dados do Firestore atualizados");
+      // console.log("✅ Dados do Firestore atualizados");
 
       // Atualizar senha se fornecida
       if (novaSenha) {
         await updatePassword(user, novaSenha);
-        console.log("✅ Senha atualizada");
+        // console.log("✅ Senha atualizada");
         setNovaSenha("");
         setConfirmarNovaSenha("");
       }
@@ -231,9 +231,9 @@ export default function Perfil() {
         style: "destructive",
         onPress: async () => {
           try {
-            console.log("👋 Fazendo logout...");
+            // console.log("👋 Fazendo logout...");
             await signOut(auth);
-            console.log("✅ Logout realizado");
+            // console.log("✅ Logout realizado");
             router.replace("/");
           } catch (error) {
             console.error("❌ Erro ao sair:", error);
@@ -264,6 +264,12 @@ export default function Perfil() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back" size={28} color="#fff" />
+          </TouchableOpacity>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <MaterialIcons

@@ -17,6 +17,16 @@ export default StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: "rgba(0, 0, 0, 0.3)",
   },
+  backButton: {
+    position: "absolute",
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   avatarContainer: {
     marginBottom: 15,
   },

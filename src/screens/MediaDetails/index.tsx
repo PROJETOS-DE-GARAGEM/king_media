@@ -140,7 +140,7 @@ export default function MediaDetails() {
         // Buscar listas do usuário e abrir modal
         const { getUserLists } = await import("../../services/userMedia");
         const lists = await getUserLists();
-        console.log("📋 Listas carregadas:", lists.length, lists);
+        // console.log("📋 Listas carregadas:", lists.length, lists);
         setUserLists(lists);
         setShowListModal(true);
       }
@@ -799,13 +799,13 @@ export default function MediaDetails() {
                 showsVerticalScrollIndicator={true}
               >
                 {userLists.map((item, index) => {
-                  console.log(`📋 Renderizando lista ${index}:`, item.name);
+                  // console.log(`📋 Renderizando lista ${index}:`, item.name);
                   return (
                     <TouchableOpacity
                       key={item.id || index.toString()}
                       style={styles.listOption}
                       onPress={async () => {
-                        console.log("🎯 Clicou na lista:", item.name);
+                        // console.log("🎯 Clicou na lista:", item.name);
                         try {
                           setLoadingAction(true);
                           await addToSpecificList(item.name);

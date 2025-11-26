@@ -228,7 +228,15 @@ export default function MinhasListas() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📚 Minhas Listas</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back" size={28} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Minhas Listas</Text>
+        </View>
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => setModalVisible(true)}
@@ -286,7 +294,6 @@ export default function MinhasListas() {
                   </Text>
                 </View>
               </View>
-              <MaterialIcons name="chevron-right" size={24} color="#666" />
             </TouchableOpacity>
 
             {/* Botão de excluir */}
@@ -379,6 +386,18 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     backgroundColor: themas.colors.grayDark,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  backButton: {
+    marginRight: 12,
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 28,
