@@ -197,7 +197,7 @@ export default function MinhaLista() {
         <Text style={styles.countText}>
           {items.length} {items.length === 1 ? "item" : "itens"}
         </Text>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={loadItems}
           style={{
             backgroundColor: themas.colors.Secondary,
@@ -207,7 +207,7 @@ export default function MinhaLista() {
           }}
         >
           <Text style={{ color: "#fff", fontSize: 12 }}>Recarregar</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );

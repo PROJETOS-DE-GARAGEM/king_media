@@ -1,29 +1,28 @@
-import { themas } from '@/global/themas';
-import { StyleSheet } from 'react-native';
+import { themas } from "@/global/themas";
+import { StyleSheet } from "react-native";
 
- export const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: themas.colors.grayDark,
     alignItems: "center",
     padding: 24,
-    paddingTop: 0,
-    justifyContent: "center",
+    paddingTop: 60,
+    paddingBottom: 40,
   },
   titulo: {
     color: themas.colors.Secondary,
     fontSize: 26,
     fontWeight: "bold",
     marginBottom: 20,
-
   },
   subtitulo: {
     color: themas.colors.Secondary,
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 25,
-    textAlign: "left", 
-    width: "100%", 
+    textAlign: "left",
+    width: "100%",
   },
   input: {
     width: "100%",
@@ -65,4 +64,3 @@ import { StyleSheet } from 'react-native';
     marginVertical: 10,
   },
 });
-

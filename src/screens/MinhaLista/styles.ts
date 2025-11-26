@@ -19,7 +19,8 @@ export default StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 40,
+    marginTop: 27
   },
   backButton: {
     marginRight: 15,

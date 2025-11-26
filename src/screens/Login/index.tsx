@@ -8,6 +8,9 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -139,133 +142,146 @@ export default function Login() {
       locations={[0, 0.7]}
       style={style.container}
     >
-      <ButtonBack />
-
-      {/* Topo */}
-      <View style={style.boxTop}>
-        <Image
-          style={style.img}
-          source={require("../../../assets/images/logo2.png")}
-        />
-      </View>
-
-      {/* Inputs */}
-      <View style={style.boxMid}>
-        <Text style={style.text}>Entrar</Text>
-
-        {/* Email */}
-        <View style={style.boxInput}>
-          <MaterialIcons
-            name="person"
-            size={20}
-            color={"white"}
-            style={{ marginRight: 8 }}
-          />
-          <View style={style.separator}></View>
-
-          <TextInput
-            style={style.input}
-            placeholder="exemplo@email.com"
-            placeholderTextColor={"gray"}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={email}
-            onChangeText={(text) => setEmail(text.toLowerCase().trim())}
-          />
-        </View>
-        <Text style={style.helpText}>
-          💡 Use seu email completo (ex: seunome@gmail.com)
-        </Text>
-
-        {/* Senha */}
-        <View style={style.boxInput}>
-          <MaterialIcons
-            name="lock"
-            size={20}
-            color={"white"}
-            style={{ marginRight: 8 }}
-          />
-          <View style={style.separator}></View>
-
-          <TextInput
-            style={style.input}
-            placeholder="Senha"
-            placeholderTextColor={"gray"}
-            secureTextEntry={!visible}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <TouchableOpacity onPress={() => setVisible(!visible)}>
-            <MaterialIcons
-              name={visible ? "visibility-off" : "visibility"}
-              size={20}
-              color={"white"}
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={style.boxEquecido}>
-          <Link style={style.link} href={"/recuperarSenha"}>
-            Esqueceu a senha?
-          </Link>
-        </View>
-      </View>
-
-      {/* Botão */}
-
-      <View style={style.boxBottom}>
-        <TouchableOpacity
-          style={style.button}
-          onPress={getLogin}
-          disabled={loading}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1, width: "100%" }}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <LinearGradient
-            colors={["#FAA916", "#C73E1D"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={style.button}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={style.buttonText}>Acessar</Text>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
+          <ButtonBack />
 
-        <Text style={style.textoCadastro}>
-          Ainda não possui uma conta?{" "}
-          <Link style={style.link} href={"/cadastro"}>
-            Cadastre-se
-          </Link>
-        </Text>
+          {/* Topo */}
+          <View style={style.boxTop}>
+            <Image
+              style={style.img}
+              source={require("../../../assets/images/logo2.png")}
+            />
+          </View>
 
-        {/* Botão de teste - REMOVER EM PRODUÇÃO */}
-        {__DEV__ && (
-          <TouchableOpacity
-            style={{
-              marginTop: 15,
-              padding: 10,
-              backgroundColor: "rgba(255,255,255,0.1)",
-              borderRadius: 10,
-              borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.3)",
-            }}
-            onPress={() => {
-              Alert.alert(
-                "Dica de Teste",
-                "Para testar:\n\n1. Crie uma conta em 'Cadastre-se'\n2. Use um email válido: teste@gmail.com\n3. Senha: mínimo 6 caracteres\n\nOu use uma conta já criada.",
-                [{ text: "Entendi" }]
-              );
-            }}
-          >
-            <Text style={{ color: "#fff", textAlign: "center", fontSize: 12 }}>
-              ℹ️ Como fazer login?
+          {/* Inputs */}
+          <View style={style.boxMid}>
+            <Text style={style.text}>Entrar</Text>
+
+            {/* Email */}
+            <View style={style.boxInput}>
+              <MaterialIcons
+                name="person"
+                size={20}
+                color={"white"}
+                style={{ marginRight: 8 }}
+              />
+              <View style={style.separator}></View>
+
+              <TextInput
+                style={style.input}
+                placeholder="exemplo@email.com"
+                placeholderTextColor={"gray"}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={email}
+                onChangeText={(text) => setEmail(text.toLowerCase().trim())}
+              />
+            </View>
+            <Text style={style.helpText}>
+              💡 Use seu email completo (ex: seunome@gmail.com)
             </Text>
-          </TouchableOpacity>
-        )}
-      </View>
+
+            {/* Senha */}
+            <View style={style.boxInput}>
+              <MaterialIcons
+                name="lock"
+                size={20}
+                color={"white"}
+                style={{ marginRight: 8 }}
+              />
+              <View style={style.separator}></View>
+
+              <TextInput
+                style={style.input}
+                placeholder="Senha"
+                placeholderTextColor={"gray"}
+                secureTextEntry={!visible}
+                value={password}
+                onChangeText={setPassword}
+              />
+              <TouchableOpacity onPress={() => setVisible(!visible)}>
+                <MaterialIcons
+                  name={visible ? "visibility-off" : "visibility"}
+                  size={20}
+                  color={"white"}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={style.boxEquecido}>
+              <Link style={style.link} href={"/recuperarSenha"}>
+                Esqueceu a senha?
+              </Link>
+            </View>
+          </View>
+
+          {/* Botão */}
+
+          <View style={style.boxBottom}>
+            <TouchableOpacity
+              style={style.button}
+              onPress={getLogin}
+              disabled={loading}
+            >
+              <LinearGradient
+                colors={["#FAA916", "#C73E1D"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={style.button}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={style.buttonText}>Acessar</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            <Text style={style.textoCadastro}>
+              Ainda não possui uma conta?{" "}
+              <Link style={style.link} href={"/cadastro"}>
+                Cadastre-se
+              </Link>
+            </Text>
+
+            {/* Botão de teste - REMOVER EM PRODUÇÃO */}
+            {__DEV__ && (
+              <TouchableOpacity
+                style={{
+                  marginTop: 15,
+                  padding: 10,
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.3)",
+                }}
+                onPress={() => {
+                  Alert.alert(
+                    "Dica de Teste",
+                    "Para testar:\n\n1. Crie uma conta em 'Cadastre-se'\n2. Use um email válido: teste@gmail.com\n3. Senha: mínimo 6 caracteres\n\nOu use uma conta já criada.",
+                    [{ text: "Entendi" }]
+                  );
+                }}
+              >
+                <Text
+                  style={{ color: "#fff", textAlign: "center", fontSize: 12 }}
+                >
+                  ℹ️ Como fazer login?
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }

@@ -48,6 +48,16 @@ export default function TabLayout() {
         tabBarInactiveTintColor: themas.colors.White,
         tabBarStyle: {
           backgroundColor: themas.colors.grayDark,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 100,
+          borderTopWidth: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+        },
+        tabBarIconStyle: {
+          marginBottom: -4,
         },
       }}
     >

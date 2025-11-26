@@ -13,7 +13,10 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   View,
@@ -126,91 +129,113 @@ export default function Cadastro() {
   }
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require("../../../assets/images/logo2.png")}
-        style={{ width: 220, height: 220, marginBottom: 50 }}
-        resizeMode="contain"
-      />
-
-      <Text style={styles.subtitulo}>Cadastrar</Text>
-
-      <TextInput
-        style={[styles.input, campoFocado === "nome" && styles.inputFocado]}
-        placeholder="Nome completo"
-        placeholderTextColor="#aaa"
-        value={nome}
-        onChangeText={setNome}
-        onFocus={() => setCampoFocado("nome")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <TextInput
-        style={[styles.input, campoFocado === "username" && styles.inputFocado]}
-        placeholder="Nome de usuário"
-        placeholderTextColor="#aaa"
-        value={username}
-        onChangeText={setUsername}
-        onFocus={() => setCampoFocado("username")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <TextInput
-        style={[styles.input, campoFocado === "email" && styles.inputFocado]}
-        placeholder="Email"
-        placeholderTextColor="#aaa"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-        onFocus={() => setCampoFocado("email")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <TextInput
-        style={[styles.input, campoFocado === "senha" && styles.inputFocado]}
-        placeholder="Senha"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={senha}
-        onChangeText={setSenha}
-        onFocus={() => setCampoFocado("senha")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <TextInput
-        style={[
-          styles.input,
-          campoFocado === "confirmar" && styles.inputFocado,
-        ]}
-        placeholder="Confirmar senha"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={confirmarSenha}
-        onChangeText={setConfirmarSenha}
-        onFocus={() => setCampoFocado("confirmar")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <Text style={styles.textoAviso}>
-        Ao se cadastrar, você concorda com nossos termos de uso e políticas de
-        privacidade.
-      </Text>
-
-      <Pressable
-        onPressIn={() => (scale.value = withTiming(0.96, { duration: 100 }))}
-        onPressOut={() => (scale.value = withTiming(1, { duration: 100 }))}
-        onPress={handleCadastro}
-        disabled={carregando}
-        style={{ width: "100%" }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={[styles.botao, animatedStyle]}>
-          {carregando ? (
-            <ActivityIndicator color="#1B263B" />
-          ) : (
-            <Text style={styles.textoBotao}>Cadastrar-se</Text>
-          )}
-        </Animated.View>
-      </Pressable>
-    </View>
+        <View style={styles.container}>
+          <Image
+            source={require("../../../assets/images/logo2.png")}
+            style={{ width: 220, height: 220, marginBottom: 50 }}
+            resizeMode="contain"
+          />
+
+          <Text style={styles.subtitulo}>Cadastrar</Text>
+
+          <TextInput
+            style={[styles.input, campoFocado === "nome" && styles.inputFocado]}
+            placeholder="Nome completo"
+            placeholderTextColor="#aaa"
+            value={nome}
+            onChangeText={setNome}
+            onFocus={() => setCampoFocado("nome")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              campoFocado === "username" && styles.inputFocado,
+            ]}
+            placeholder="Nome de usuário"
+            placeholderTextColor="#aaa"
+            value={username}
+            onChangeText={setUsername}
+            onFocus={() => setCampoFocado("username")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              campoFocado === "email" && styles.inputFocado,
+            ]}
+            placeholder="Email"
+            placeholderTextColor="#aaa"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+            onFocus={() => setCampoFocado("email")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              campoFocado === "senha" && styles.inputFocado,
+            ]}
+            placeholder="Senha"
+            placeholderTextColor="#aaa"
+            secureTextEntry
+            value={senha}
+            onChangeText={setSenha}
+            onFocus={() => setCampoFocado("senha")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              campoFocado === "confirmar" && styles.inputFocado,
+            ]}
+            placeholder="Confirmar senha"
+            placeholderTextColor="#aaa"
+            secureTextEntry
+            value={confirmarSenha}
+            onChangeText={setConfirmarSenha}
+            onFocus={() => setCampoFocado("confirmar")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <Text style={styles.textoAviso}>
+            Ao se cadastrar, você concorda com nossos termos de uso e políticas
+            de privacidade.
+          </Text>
+
+          <Pressable
+            onPressIn={() =>
+              (scale.value = withTiming(0.96, { duration: 100 }))
+            }
+            onPressOut={() => (scale.value = withTiming(1, { duration: 100 }))}
+            onPress={handleCadastro}
+            disabled={carregando}
+            style={{ width: "100%" }}
+          >
+            <Animated.View style={[styles.botao, animatedStyle]}>
+              {carregando ? (
+                <ActivityIndicator color="#1B263B" />
+              ) : (
+                <Text style={styles.textoBotao}>Cadastrar-se</Text>
+              )}
+            </Animated.View>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
