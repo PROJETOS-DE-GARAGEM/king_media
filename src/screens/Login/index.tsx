@@ -151,7 +151,7 @@ export default function Login() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <ButtonBack />
+         
 
           {/* Topo */}
           <View style={style.boxTop}>
