@@ -87,6 +87,26 @@ export interface VideosResponse {
   results: Video[];
 }
 
+// Função para buscar lançamentos (filmes e séries recentes)
+export const getNewReleases = async (): Promise<MediaItem[]> => {
+  try {
+    const [moviesResponse, tvResponse] = await Promise.all([
+      fetch(`${BASE_URL}/movie/now_playing?language=pt-BR&page=1`, options),
+      fetch(`${BASE_URL}/tv/on_the_air?language=pt-BR&page=1`, options),
+    ]);
+
+    const moviesData: TMDBResponse = await moviesResponse.json();
+    const tvData: TMDBResponse = await tvResponse.json();
+
+    // Combinar e ordenar por data de lançamento
+    const combined = [...moviesData.results, ...tvData.results];
+    return combined.slice(0, 20);
+  } catch (error) {
+    console.error("Erro ao buscar lançamentos:", error);
+    return [];
+  }
+};
+
 // Função para buscar filmes populares
 export const getPopularMovies = async (): Promise<MediaItem[]> => {
   try {
@@ -128,6 +148,21 @@ export const getAnimes = async (): Promise<MediaItem[]> => {
     return data.results;
   } catch (error) {
     console.error("Erro ao buscar animes:", error);
+    return [];
+  }
+};
+
+// Função para buscar novelas (dramas/soap operas)
+export const getSoapOperas = async (): Promise<MediaItem[]> => {
+  try {
+    const response = await fetch(
+      `${BASE_URL}/discover/tv?language=pt-BR&with_genres=18&with_origin_country=BR|MX|CO&sort_by=popularity.desc&page=1`,
+      options
+    );
+    const data: TMDBResponse = await response.json();
+    return data.results;
+  } catch (error) {
+    console.error("Erro ao buscar novelas:", error);
     return [];
   }
 };
@@ -378,4 +413,79 @@ export const getMainTrailer = (videos: Video[]): Video | null => {
   );
 
   return anyTrailer || null;
+};
+
+// Função para buscar filmes similares
+export const getSimilarMovies = async (
+  movieId: number
+): Promise<MediaItem[]> => {
+  try {
+    const response = await fetch(
+      `${BASE_URL}/movie/${movieId}/similar?language=pt-BR&page=1`,
+      options
+    );
+    const data: TMDBResponse = await response.json();
+    return data.results.slice(0, 10);
+  } catch (error) {
+    console.error("Erro ao buscar filmes similares:", error);
+    return [];
+  }
+};
+
+// Função para buscar séries similares
+export const getSimilarTVShows = async (tvId: number): Promise<MediaItem[]> => {
+  try {
+    const response = await fetch(
+      `${BASE_URL}/tv/${tvId}/similar?language=pt-BR&page=1`,
+      options
+    );
+    const data: TMDBResponse = await response.json();
+    return data.results.slice(0, 10);
+  } catch (error) {
+    console.error("Erro ao buscar séries similares:", error);
+    return [];
+  }
+};
+
+// Função para buscar recomendações personalizadas baseadas em filmes assistidos
+export const getRecommendationsForUser = async (
+  watchedMediaIds: { id: number; type: "movie" | "tv" }[]
+): Promise<MediaItem[]> => {
+  try {
+    if (watchedMediaIds.length === 0) {
+      // Se não tiver nada assistido, retornar populares
+      return await getPopularMovies();
+    }
+
+    // Pegar os 3 últimos filmes/séries assistidos
+    const recentMedia = watchedMediaIds.slice(-3);
+
+    const allRecommendations: MediaItem[] = [];
+
+    // Buscar similares para cada um
+    for (const media of recentMedia) {
+      if (media.type === "movie") {
+        const similar = await getSimilarMovies(media.id);
+        allRecommendations.push(...similar);
+      } else {
+        const similar = await getSimilarTVShows(media.id);
+        allRecommendations.push(...similar);
+      }
+    }
+
+    // Remover duplicatas
+    const uniqueRecommendations = allRecommendations.filter(
+      (item, index, self) => index === self.findIndex((t) => t.id === item.id)
+    );
+
+    // Remover itens que já foram assistidos
+    const filteredRecommendations = uniqueRecommendations.filter(
+      (item) => !watchedMediaIds.find((watched) => watched.id === item.id)
+    );
+
+    return filteredRecommendations.slice(0, 20);
+  } catch (error) {
+    console.error("Erro ao buscar recomendações:", error);
+    return [];
+  }
 };

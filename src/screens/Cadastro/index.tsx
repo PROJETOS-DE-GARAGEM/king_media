@@ -1,22 +1,32 @@
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { child, get, getDatabase, ref, set } from "firebase/database";
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
-  View
+  View,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { auth } from "../../../firebase/firebaseConfig";
+import { auth, db } from "../../../firebase/firebaseConfig";
 import { styles } from "./styles";
 
 export default function Cadastro() {
@@ -61,38 +71,39 @@ export default function Cadastro() {
     setCarregando(true);
 
     try {
-      const db = getDatabase();
-      const dbRef = ref(db);
+      // Verifica se o username já existe no Firestore
+      const usernameQuery = query(
+        collection(db, "users"),
+        where("username", "==", username)
+      );
+      const usernameSnapshot = await getDocs(usernameQuery);
 
-      // Verifica se o username já existe
-      const snapshot = await get(child(dbRef, "users"));
-      if (snapshot.exists()) {
-        const users = snapshot.val();
-        const usernamesExistentes = Object.values(users).map((u: any) => u.username);
-        if (usernamesExistentes.includes(username)) {
-          Alert.alert("Erro", "Este nome de usuário já está em uso.");
-          setCarregando(false);
-          return;
-        }
+      if (!usernameSnapshot.empty) {
+        Alert.alert("Erro", "Este nome de usuário já está em uso.");
+        setCarregando(false);
+        return;
       }
 
       // Cria usuário no Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, senha);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        senha
+      );
       const user = userCredential.user;
 
       // Atualiza displayName
       await updateProfile(user, { displayName: nome });
 
-      // Salva dados no Realtime Database
-      await set(ref(db, "users/" + user.uid), {
+      // Salva dados no Firestore
+      await setDoc(doc(db, "users", user.uid), {
         nome,
         username,
         email,
-        senha,
         criadoEm: new Date().toISOString(),
       });
 
-      console.log("Dados salvos no Realtime Database com sucesso!");
+      console.log("✅ Dados salvos no Firestore com sucesso!");
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -118,88 +129,113 @@ export default function Cadastro() {
   }
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require("../../../assets/images/logo2.png")}
-        style={{ width: 220, height:220, marginBottom: 50 }}
-        resizeMode="contain"
-      />
-
-      <Text style={styles.subtitulo}>Cadastrar</Text>
-
-      <TextInput
-        style={[styles.input, campoFocado === "nome" && styles.inputFocado]}
-        placeholder="Nome completo"
-        placeholderTextColor="#aaa"
-        value={nome}
-        onChangeText={setNome}
-        onFocus={() => setCampoFocado("nome")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <TextInput
-        style={[styles.input, campoFocado === "username" && styles.inputFocado]}
-        placeholder="Nome de usuário"
-        placeholderTextColor="#aaa"
-        value={username}
-        onChangeText={setUsername}
-        onFocus={() => setCampoFocado("username")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <TextInput
-        style={[styles.input, campoFocado === "email" && styles.inputFocado]}
-        placeholder="Email"
-        placeholderTextColor="#aaa"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-        onFocus={() => setCampoFocado("email")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <TextInput
-        style={[styles.input, campoFocado === "senha" && styles.inputFocado]}
-        placeholder="Senha"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={senha}
-        onChangeText={setSenha}
-        onFocus={() => setCampoFocado("senha")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <TextInput
-        style={[styles.input, campoFocado === "confirmar" && styles.inputFocado]}
-        placeholder="Confirmar senha"
-        placeholderTextColor="#aaa"
-        secureTextEntry
-        value={confirmarSenha}
-        onChangeText={setConfirmarSenha}
-        onFocus={() => setCampoFocado("confirmar")}
-        onBlur={() => setCampoFocado(null)}
-      />
-
-      <Text style={styles.textoAviso}>
-        Ao se cadastrar, você concorda com nossos termos de uso e políticas de privacidade.
-      </Text>
-
-      <Pressable
-        onPressIn={() => (scale.value = withTiming(0.96, { duration: 100 }))}
-        onPressOut={() => (scale.value = withTiming(1, { duration: 100 }))}
-        onPress={handleCadastro}
-        disabled={carregando}
-        style={{ width: "100%" }}
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Animated.View style={[styles.botao, animatedStyle]}>
-        
-          {carregando ? (
-            <ActivityIndicator color="#1B263B" />
-          ) : (
-            <Text style={styles.textoBotao}>Cadastrar-se</Text>
-          )}
-        </Animated.View>
-      </Pressable>
-    </View>
+        <View style={styles.container}>
+          <Image
+            source={require("../../../assets/images/logo2.png")}
+            style={{ width: 220, height: 220, marginBottom: 50 }}
+            resizeMode="contain"
+          />
+
+          <Text style={styles.subtitulo}>Cadastrar</Text>
+
+          <TextInput
+            style={[styles.input, campoFocado === "nome" && styles.inputFocado]}
+            placeholder="Nome completo"
+            placeholderTextColor="#aaa"
+            value={nome}
+            onChangeText={setNome}
+            onFocus={() => setCampoFocado("nome")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              campoFocado === "username" && styles.inputFocado,
+            ]}
+            placeholder="Nome de usuário"
+            placeholderTextColor="#aaa"
+            value={username}
+            onChangeText={setUsername}
+            onFocus={() => setCampoFocado("username")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              campoFocado === "email" && styles.inputFocado,
+            ]}
+            placeholder="Email"
+            placeholderTextColor="#aaa"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+            onFocus={() => setCampoFocado("email")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              campoFocado === "senha" && styles.inputFocado,
+            ]}
+            placeholder="Senha"
+            placeholderTextColor="#aaa"
+            secureTextEntry
+            value={senha}
+            onChangeText={setSenha}
+            onFocus={() => setCampoFocado("senha")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <TextInput
+            style={[
+              styles.input,
+              campoFocado === "confirmar" && styles.inputFocado,
+            ]}
+            placeholder="Confirmar senha"
+            placeholderTextColor="#aaa"
+            secureTextEntry
+            value={confirmarSenha}
+            onChangeText={setConfirmarSenha}
+            onFocus={() => setCampoFocado("confirmar")}
+            onBlur={() => setCampoFocado(null)}
+          />
+
+          <Text style={styles.textoAviso}>
+            Ao se cadastrar, você concorda com nossos termos de uso e políticas
+            de privacidade.
+          </Text>
+
+          <Pressable
+            onPressIn={() =>
+              (scale.value = withTiming(0.96, { duration: 100 }))
+            }
+            onPressOut={() => (scale.value = withTiming(1, { duration: 100 }))}
+            onPress={handleCadastro}
+            disabled={carregando}
+            style={{ width: "100%" }}
+          >
+            <Animated.View style={[styles.botao, animatedStyle]}>
+              {carregando ? (
+                <ActivityIndicator color="#1B263B" />
+              ) : (
+                <Text style={styles.textoBotao}>Cadastrar-se</Text>
+              )}
+            </Animated.View>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

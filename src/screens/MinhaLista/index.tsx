@@ -1,17 +1,23 @@
 import CardSeries from "@/components/CardSeries";
 import { themas } from "@/global/themas";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Modal,
   RefreshControl,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { getUserMedia, UserMediaItem } from "../../services/userMedia";
+import {
+  getUserMedia,
+  removeMediaFromList,
+  UserMediaItem,
+} from "../../services/userMedia";
 import styles from "./styles";
 
 type FilterStatus =
@@ -23,9 +29,13 @@ type FilterStatus =
 
 export default function MinhaLista() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const listNameParam = params.listName as string | undefined;
   const [allItems, setAllItems] = useState<UserMediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState<FilterStatus>("todos");
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<UserMediaItem | null>(null);
 
   // Recarregar sempre que a tela ganhar foco
   useFocusEffect(
@@ -37,13 +47,71 @@ export default function MinhaLista() {
   const loadItems = async () => {
     try {
       setLoading(true);
-      const data = await getUserMedia();
+      // Se tiver listName, filtrar por ela
+      const data = listNameParam
+        ? await getUserMedia(undefined, listNameParam)
+        : await getUserMedia();
       setAllItems(data);
     } catch (error) {
       console.error("❌ Erro ao carregar lista:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenMenu = (item: UserMediaItem) => {
+    setSelectedItem(item);
+    setMenuVisible(true);
+  };
+
+  const handleCloseMenu = () => {
+    setMenuVisible(false);
+    setSelectedItem(null);
+  };
+
+  const handleRemoveMedia = async () => {
+    if (!selectedItem) return;
+
+    handleCloseMenu();
+
+    Alert.alert(
+      "Remover da Lista",
+      `Deseja remover "${selectedItem.title}" da sua lista?`,
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Remover",
+          style: "destructive",
+          onPress: async () => {
+            // Atualizar lista local imediatamente para feedback visual instantâneo
+            setAllItems((prev) =>
+              prev.filter(
+                (i) =>
+                  !(
+                    i.mediaId === selectedItem.mediaId &&
+                    i.mediaType === selectedItem.mediaType
+                  )
+              )
+            );
+
+            // Remover do Firestore em background
+            const success = await removeMediaFromList(
+              selectedItem.mediaId,
+              selectedItem.mediaType
+            );
+
+            if (!success) {
+              // Se falhar, mostrar erro (sem reverter pois é pouco provável)
+              Alert.alert("Erro", "Não foi possível remover do servidor.");
+            }
+            // Sem Alert de sucesso - remoção visual já é feedback suficiente
+          },
+        },
+      ]
+    );
   };
 
   // Filtrar localmente sem recarregar
@@ -91,7 +159,9 @@ export default function MinhaLista() {
         >
           <MaterialIcons name="arrow-back" size={28} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Minha Lista</Text>
+        <Text style={styles.title}>
+          {listNameParam ? listNameParam : "Minha Lista"}
+        </Text>
       </View>
 
       <View style={styles.filtersContainer}>
@@ -127,7 +197,7 @@ export default function MinhaLista() {
         <Text style={styles.countText}>
           {items.length} {items.length === 1 ? "item" : "itens"}
         </Text>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={loadItems}
           style={{
             backgroundColor: themas.colors.Secondary,
@@ -137,7 +207,7 @@ export default function MinhaLista() {
           }}
         >
           <Text style={{ color: "#fff", fontSize: 12 }}>Recarregar</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </View>
   );
@@ -212,11 +282,56 @@ export default function MinhaLista() {
                     {getFilterLabel(item.status)}
                   </Text>
                 </View>
+                {/* Mostrar botão de menu apenas em listas personalizadas */}
+                {listNameParam && (
+                  <TouchableOpacity
+                    style={styles.menuButton}
+                    onPress={() => handleOpenMenu(item)}
+                  >
+                    <MaterialIcons name="more-vert" size={20} color="#fff" />
+                  </TouchableOpacity>
+                )}
               </View>
             );
           }}
         />
       )}
+
+      {/* Modal de Opções */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseMenu}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleCloseMenu}
+        >
+          <View style={styles.menuModal}>
+            <Text style={styles.menuTitle}>{selectedItem?.title}</Text>
+
+            <TouchableOpacity
+              style={styles.menuOption}
+              onPress={handleRemoveMedia}
+            >
+              <MaterialIcons name="delete" size={22} color="#FF3B30" />
+              <Text style={[styles.menuOptionText, { color: "#FF3B30" }]}>
+                Remover da Lista
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuOption}
+              onPress={handleCloseMenu}
+            >
+              <MaterialIcons name="close" size={22} color="#fff" />
+              <Text style={styles.menuOptionText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }

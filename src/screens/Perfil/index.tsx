@@ -2,7 +2,7 @@ import { themas } from "@/global/themas";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { signOut, updatePassword, updateProfile } from "firebase/auth";
-import { get, getDatabase, ref, update } from "firebase/database";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { auth } from "../../../firebase/firebaseConfig";
+import { auth, db } from "../../../firebase/firebaseConfig";
 import styles from "./styles";
 
 export default function Perfil() {
@@ -71,20 +71,19 @@ export default function Perfil() {
         return;
       }
 
-      console.log("👤 Carregando dados do usuário:", user.uid);
+      // console.log("👤 Carregando dados do usuário:", user.uid);
 
       // Dados do Firebase Auth
       setEmail(user.email || "");
       setNome(user.displayName || "");
 
-      // Buscar dados do Realtime Database
-      const database = getDatabase();
-      const userRef = ref(database, "users/" + user.uid);
-      const snapshot = await get(userRef);
+      // Buscar dados do Firestore
+      const userRef = doc(db, "users", user.uid);
+      const snapshot = await getDoc(userRef);
 
       if (snapshot.exists()) {
-        const userData = snapshot.val();
-        console.log("📊 Dados do banco:", userData);
+        const userData = snapshot.data();
+        // console.log("📊 Dados do Firestore:", userData);
         setUsername(userData.username || "");
         setNome(userData.nome || user.displayName || "");
       }
@@ -122,26 +121,25 @@ export default function Perfil() {
         return;
       }
 
-      console.log("💾 Salvando alterações...");
+      // console.log("💾 Salvando alterações...");
 
       // Atualizar displayName no Auth
       await updateProfile(user, { displayName: nome });
-      console.log("✅ DisplayName atualizado");
+      // console.log("✅ DisplayName atualizado");
 
-      // Atualizar dados no Realtime Database
-      const database = getDatabase();
-      const userRef = ref(database, "users/" + user.uid);
-      await update(userRef, {
+      // Atualizar dados no Firestore
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
         nome,
         username,
         atualizadoEm: new Date().toISOString(),
       });
-      console.log("✅ Dados do banco atualizados");
+      // console.log("✅ Dados do Firestore atualizados");
 
       // Atualizar senha se fornecida
       if (novaSenha) {
         await updatePassword(user, novaSenha);
-        console.log("✅ Senha atualizada");
+        // console.log("✅ Senha atualizada");
         setNovaSenha("");
         setConfirmarNovaSenha("");
       }
@@ -180,6 +178,48 @@ export default function Perfil() {
     }
   };
 
+  const handleClearAllData = () => {
+    Alert.alert(
+      "⚠️ Limpar Todos os Dados",
+      "Isso vai remover TODOS os filmes, séries, listas e progresso. Esta ação não pode ser desfeita!\n\nDeseja continuar?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "Limpar Tudo",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { clearAllUserData } = await import(
+                "../../services/userMedia"
+              );
+              const success = await clearAllUserData();
+
+              if (success) {
+                Alert.alert("✅ Sucesso", "Todos os dados foram removidos!", [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      loadStats();
+                      router.push("/(tabs)/menu");
+                    },
+                  },
+                ]);
+              } else {
+                Alert.alert("❌ Erro", "Não foi possível limpar os dados");
+              }
+            } catch (error) {
+              console.error("❌ Erro ao limpar dados:", error);
+              Alert.alert("❌ Erro", "Não foi possível limpar os dados");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleLogout = () => {
     Alert.alert("Sair", "Deseja realmente sair da sua conta?", [
       {
@@ -191,9 +231,9 @@ export default function Perfil() {
         style: "destructive",
         onPress: async () => {
           try {
-            console.log("👋 Fazendo logout...");
+            // console.log("👋 Fazendo logout...");
             await signOut(auth);
-            console.log("✅ Logout realizado");
+            // console.log("✅ Logout realizado");
             router.replace("/");
           } catch (error) {
             console.error("❌ Erro ao sair:", error);
@@ -224,6 +264,12 @@ export default function Perfil() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <MaterialIcons name="arrow-back" size={28} color="#fff" />
+          </TouchableOpacity>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
               <MaterialIcons
@@ -429,6 +475,23 @@ export default function Perfil() {
                   color={themas.colors.Secondary}
                 />
                 <Text style={styles.optionText}>Minha Lista</Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color="#666" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.optionRow}
+              onPress={handleClearAllData}
+            >
+              <View style={styles.optionLeft}>
+                <MaterialIcons
+                  name="delete-forever"
+                  size={24}
+                  color="#FF3B30"
+                />
+                <Text style={[styles.optionText, { color: "#FF3B30" }]}>
+                  Limpar Todos os Dados
+                </Text>
               </View>
               <MaterialIcons name="chevron-right" size={24} color="#666" />
             </TouchableOpacity>

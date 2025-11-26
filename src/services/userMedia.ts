@@ -26,7 +26,8 @@ export interface UserMediaItem {
   title: string;
   posterPath: string | null;
   status: "quero_assistir" | "assistindo" | "assistido" | "pausado";
-  rating?: number;
+  rating?: number; // 1-5 estrelas
+  review?: string; // Comentário pessoal
   addedAt: Timestamp;
   updatedAt: Timestamp;
   genres: string[];
@@ -123,28 +124,47 @@ export const addMediaToList = async (
   const user = auth.currentUser;
   if (!user) return false;
 
+  const startTime = Date.now();
+  console.log("⏱️ [ADD] Iniciando...");
+
   try {
+    // Remover campos undefined antes de salvar no Firestore
+    const cleanedData = { ...mediaData };
+    if (cleanedData.listName === undefined) {
+      delete cleanedData.listName;
+    }
+    if (cleanedData.rating === undefined) {
+      delete cleanedData.rating;
+    }
+    if (cleanedData.review === undefined) {
+      delete cleanedData.review;
+    }
+
     const docToAdd = {
       userId: user.uid,
-      ...mediaData,
+      ...cleanedData,
       addedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
 
+    console.log("⏱️ [ADD] Salvando no Firestore...");
     const docRef = await addDoc(collection(db, "userMedia"), docToAdd);
+    console.log(`⏱️ [ADD] Salvo! Tempo: ${Date.now() - startTime}ms`);
 
     // Atualizar cache imediatamente
     if (cacheUserId === user.uid) {
       mediaCache.push({ id: docRef.id, ...docToAdd });
+      console.log("⏱️ [ADD] Cache atualizado!");
     }
 
+    console.log(`✅ [ADD] Total: ${Date.now() - startTime}ms`);
     return true;
   } catch (error) {
-    console.error("❌ Erro ao adicionar mídia:", error);
+    console.error("❌ [ADD] Erro:", error);
+    console.log(`⏱️ [ADD] Tempo até erro: ${Date.now() - startTime}ms`);
     return false;
   }
 };
-
 export const removeMediaFromList = async (
   mediaId: number,
   mediaType: "movie" | "tv"
@@ -204,6 +224,7 @@ export const getUserMedia = async (
   if (!user) return [];
 
   const now = Date.now();
+  const startTime = Date.now();
 
   // Usar cache se disponível e válido
   if (
@@ -212,6 +233,11 @@ export const getUserMedia = async (
     mediaCache.length > 0 &&
     now - cacheTime < CACHE_DURATION
   ) {
+    console.log(
+      `⚡ [GET] Usando CACHE! ${mediaCache.length} itens (${
+        Date.now() - startTime
+      }ms)`
+    );
     let items = [...mediaCache];
 
     // Filtrar no lado do cliente
@@ -226,12 +252,21 @@ export const getUserMedia = async (
     return items;
   }
 
+  console.log("⏱️ [GET] Cache vazio ou expirado. Buscando do Firestore...");
+
   try {
     const q = query(
       collection(db, "userMedia"),
       where("userId", "==", user.uid)
     );
+
+    console.log("⏱️ [GET] Executando query...");
     const snapshot = await getDocs(q);
+    console.log(
+      `⏱️ [GET] Query concluída: ${snapshot.size} docs (${
+        Date.now() - startTime
+      }ms)`
+    );
 
     let items = snapshot.docs.map((doc) => ({
       id: doc.id,
@@ -242,6 +277,7 @@ export const getUserMedia = async (
     mediaCache = items;
     cacheUserId = user.uid;
     cacheTime = now;
+    console.log(`⏱️ [GET] Cache atualizado com ${items.length} itens`);
 
     // Filtrar no lado do cliente
     if (status) {
@@ -252,13 +288,14 @@ export const getUserMedia = async (
       items = items.filter((item) => item.listName === listName);
     }
 
+    console.log(`✅ [GET] Total: ${Date.now() - startTime}ms`);
     return items;
   } catch (error) {
-    console.error("❌ Erro ao buscar mídia do usuário:", error);
+    console.error("❌ [GET] Erro:", error);
+    console.log(`⏱️ [GET] Tempo até erro: ${Date.now() - startTime}ms`);
     return [];
   }
 };
-
 export const checkIfMediaInList = async (
   mediaId: number,
   mediaType: "movie" | "tv"
@@ -415,27 +452,156 @@ export const updateMediaStatus = async (
   if (!user) return false;
 
   try {
+    // Query otimizada: busca direta com todos os filtros
     const q = query(
       collection(db, "userMedia"),
-      where("userId", "==", user.uid)
+      where("userId", "==", user.uid),
+      where("mediaId", "==", mediaId),
+      where("mediaType", "==", mediaType)
     );
     const snapshot = await getDocs(q);
 
-    const found = snapshot.docs.find((doc) => {
-      const data = doc.data();
-      return data.mediaId === mediaId && data.mediaType === mediaType;
-    });
-
-    if (found) {
-      await updateDoc(found.ref, {
+    if (!snapshot.empty) {
+      const docRef = snapshot.docs[0].ref;
+      await updateDoc(docRef, {
         status,
         updatedAt: Timestamp.now(),
       });
+
+      // Atualizar cache
+      if (cacheUserId === user.uid) {
+        const cacheIndex = mediaCache.findIndex(
+          (item) => item.mediaId === mediaId && item.mediaType === mediaType
+        );
+        if (cacheIndex !== -1) {
+          mediaCache[cacheIndex].status = status;
+        }
+      }
+
       return true;
     }
     return false;
   } catch (error) {
     console.error("Erro ao atualizar status:", error);
+    return false;
+  }
+};
+
+// ====== ATUALIZAR AVALIAÇÃO E REVIEW ======
+
+export const updateMediaRating = async (
+  mediaId: number,
+  mediaType: "movie" | "tv",
+  rating: number,
+  review?: string
+): Promise<boolean> => {
+  const user = auth.currentUser;
+  if (!user) return false;
+
+  try {
+    // Query otimizada: busca direta com todos os filtros
+    const q = query(
+      collection(db, "userMedia"),
+      where("userId", "==", user.uid),
+      where("mediaId", "==", mediaId),
+      where("mediaType", "==", mediaType)
+    );
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const docRef = snapshot.docs[0].ref;
+      const updateData: any = {
+        rating,
+        updatedAt: Timestamp.now(),
+      };
+
+      if (review !== undefined) {
+        updateData.review = review;
+      }
+
+      await updateDoc(docRef, updateData);
+
+      // Atualizar cache
+      if (cacheUserId === user.uid) {
+        const cacheIndex = mediaCache.findIndex(
+          (item) => item.mediaId === mediaId && item.mediaType === mediaType
+        );
+        if (cacheIndex !== -1) {
+          mediaCache[cacheIndex].rating = rating;
+          if (review !== undefined) {
+            mediaCache[cacheIndex].review = review;
+          }
+        }
+      }
+
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Erro ao atualizar avaliação:", error);
+    return false;
+  }
+};
+
+// ====== LIMPAR TODOS OS DADOS ======
+
+export const clearAllUserData = async (): Promise<boolean> => {
+  const user = auth.currentUser;
+  if (!user) return false;
+
+  try {
+    console.log("🗑️ Limpando todos os dados do usuário...");
+
+    // Limpar userMedia
+    const mediaQuery = query(
+      collection(db, "userMedia"),
+      where("userId", "==", user.uid)
+    );
+    const mediaSnapshot = await getDocs(mediaQuery);
+    console.log(`🗑️ Encontrados ${mediaSnapshot.size} itens em userMedia`);
+
+    const mediaDeletePromises = mediaSnapshot.docs.map((doc) =>
+      deleteDoc(doc.ref)
+    );
+    await Promise.all(mediaDeletePromises);
+
+    // Limpar episodeProgress
+    const episodesQuery = query(
+      collection(db, "episodeProgress"),
+      where("userId", "==", user.uid)
+    );
+    const episodesSnapshot = await getDocs(episodesQuery);
+    console.log(
+      `🗑️ Encontrados ${episodesSnapshot.size} itens em episodeProgress`
+    );
+
+    const episodesDeletePromises = episodesSnapshot.docs.map((doc) =>
+      deleteDoc(doc.ref)
+    );
+    await Promise.all(episodesDeletePromises);
+
+    // Limpar userLists
+    const listsQuery = query(
+      collection(db, "userLists"),
+      where("userId", "==", user.uid)
+    );
+    const listsSnapshot = await getDocs(listsQuery);
+    console.log(`🗑️ Encontrados ${listsSnapshot.size} itens em userLists`);
+
+    const listsDeletePromises = listsSnapshot.docs.map((doc) =>
+      deleteDoc(doc.ref)
+    );
+    await Promise.all(listsDeletePromises);
+
+    // Limpar cache
+    mediaCache = [];
+    cacheUserId = null;
+    cacheTime = 0;
+
+    console.log("✅ Todos os dados foram limpos!");
+    return true;
+  } catch (error) {
+    console.error("❌ Erro ao limpar dados:", error);
     return false;
   }
 };

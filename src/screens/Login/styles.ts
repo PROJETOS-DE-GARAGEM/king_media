@@ -20,17 +20,18 @@ export const style = StyleSheet.create({
 
   boxTop: {
     flex: 2,
-    height: Dimensions.get("window").height / 4,
+    minHeight: 180,
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
+    paddingTop: 20,
   },
 
   boxMid: {
-    height: Dimensions.get("window").height / 3,
+    minHeight: Dimensions.get("window").height / 3,
     width: "100%",
-    justifyContent: "center",
     paddingHorizontal: 30,
+    paddingVertical: 30,
     backgroundColor: themas.colors.grayStrong,
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
@@ -73,11 +74,12 @@ export const style = StyleSheet.create({
   },
 
   boxBottom: {
-    height: Dimensions.get("window").height / 3,
+    minHeight: Dimensions.get("window").height / 3,
     width: "100%",
-    justifyContent: "center",
+    paddingVertical: 30,
     alignItems: "center",
     backgroundColor: themas.colors.grayStrong,
+    paddingBottom: 40,
   },
 
   button: {

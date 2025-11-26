@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, Tabs } from "expo-router";
 import { onAuthStateChanged } from "firebase/auth";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { auth } from "../../firebase/firebaseConfig";
 
 export default function TabLayout() {
@@ -11,15 +11,15 @@ export default function TabLayout() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log("👤 Auth state changed:", user?.uid || "Não logado");
+      // console.log("👤 Auth state changed:", user?.uid || "Não logado");
 
       setLoading(false);
 
       if (!user) {
-        console.log("⚠️ Usuário não autenticado, redirecionando para login...");
+        // console.log("⚠️ Usuário não autenticado, redirecionando para login...");
         setTimeout(() => router.replace("/login"), 100);
       } else {
-        console.log("✅ Usuário autenticado, permanecendo no menu");
+        // console.log("✅ Usuário autenticado, permanecendo no menu");
       }
     });
 
@@ -48,6 +48,16 @@ export default function TabLayout() {
         tabBarInactiveTintColor: themas.colors.White,
         tabBarStyle: {
           backgroundColor: themas.colors.grayDark,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 100,
+          borderTopWidth: 0,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+        },
+        tabBarIconStyle: {
+          marginBottom: -4,
         },
       }}
     >
@@ -55,6 +65,7 @@ export default function TabLayout() {
         name="menu"
         options={{
           headerShown: false,
+          title: "Home",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" color={color} size={size} />
           ),
@@ -64,22 +75,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="add"
         options={{
-          title: "",
-          tabBarButton: (props) => (
-            <TouchableOpacity
-              onPress={() => router.push("/criarMidia")}
-              style={{
-                top: -20,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Ionicons
-                name="add-circle"
-                size={50}
-                color={themas.colors.Secondary}
-              />
-            </TouchableOpacity>
+          headerShown: false,
+          title: "Minhas Listas",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bookmarks" color={color} size={size} />
           ),
         }}
       />

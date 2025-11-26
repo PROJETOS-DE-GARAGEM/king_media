@@ -105,4 +105,17 @@ export default StyleSheet.create({
     marginTop: 16,
     textAlign: "center",
   },
+  dashboardContainer: {
+    marginVertical: 16,
+  },
+  dashboardTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#fff",
+    marginLeft: 16,
+    marginBottom: 16,
+  },
+  statsScroll: {
+    paddingHorizontal: 8,
+  },
 });

@@ -19,7 +19,8 @@ export default StyleSheet.create({
   titleContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 40,
+    marginTop: 27
   },
   backButton: {
     marginRight: 15,
@@ -90,6 +91,53 @@ export default StyleSheet.create({
   },
   statusBadgeText: {
     fontSize: 10,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  menuButton: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "flex-end",
+  },
+  menuModal: {
+    backgroundColor: themas.colors.grayDark,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  menuTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  menuOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 15,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  menuOptionText: {
+    fontSize: 16,
     color: "#fff",
     fontWeight: "600",
   },

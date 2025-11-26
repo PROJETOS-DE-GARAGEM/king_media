@@ -6,11 +6,14 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import StarRating from "../../components/StarRating";
 import {
   getImageUrl,
   getMovieDetails,
@@ -46,6 +49,9 @@ export default function MediaDetails() {
   const [userMedia, setUserMedia] = useState<UserMediaItem | null>(null);
   const [watchedEpisodes, setWatchedEpisodes] = useState<EpisodeProgress[]>([]);
   const [loadingAction, setLoadingAction] = useState(false);
+  const [showListModal, setShowListModal] = useState(false);
+  const [userLists, setUserLists] = useState<any[]>([]);
+  const [newListName, setNewListName] = useState("");
 
   useEffect(() => {
     loadDetails();
@@ -99,52 +105,109 @@ export default function MediaDetails() {
     if (loadingAction || !details) return;
 
     try {
-      setLoadingAction(true);
       const mediaId = parseInt(id);
-      const title = details.title || details.name || "Sem título";
 
       if (userMedia) {
         // Remover da lista
-        const success = await removeMediaFromList(mediaId, type);
-        if (success) {
-          setUserMedia(null);
-          Alert.alert("✅ Sucesso", "Removido da sua lista!");
-        } else {
-          Alert.alert("❌ Erro", "Não foi possível remover da lista");
-        }
-      } else {
-        // Adicionar à lista
-        const success = await addMediaToList({
-          mediaId,
-          mediaType: type,
-          title,
-          posterPath: details.poster_path || "",
-          status: "quero_assistir",
-          genres: details.genres.map((g) => g.name),
-        });
+        Alert.alert(
+          "Remover da Lista",
+          "Deseja remover este item de todas as suas listas?",
+          [
+            { text: "Cancelar", style: "cancel" },
+            {
+              text: "Remover",
+              style: "destructive",
+              onPress: async () => {
+                setLoadingAction(true);
 
-        if (success) {
-          // Atualizar estado local sem fazer nova query
-          setUserMedia({
-            id: "temp",
-            userId: "",
-            mediaId,
-            mediaType: type,
-            title,
-            posterPath: details.poster_path || "",
-            status: "quero_assistir",
-            genres: details.genres.map((g) => g.name),
-            addedAt: new Date() as any,
-            updatedAt: new Date() as any,
-          });
-          Alert.alert("✅ Sucesso", "Adicionado à sua lista!");
-        } else {
-          Alert.alert("❌ Erro", "Verifique se você está logado");
-        }
+                // Atualizar estado local imediatamente para feedback visual instantâneo
+                setUserMedia(null);
+
+                // Remover do Firestore em background
+                const success = await removeMediaFromList(mediaId, type);
+
+                if (!success) {
+                  Alert.alert("❌ Erro", "Não foi possível remover da lista");
+                }
+                // Sem Alert de sucesso - mudança do botão já é feedback suficiente
+
+                setLoadingAction(false);
+              },
+            },
+          ]
+        );
+      } else {
+        // Buscar listas do usuário e abrir modal
+        const { getUserLists } = await import("../../services/userMedia");
+        const lists = await getUserLists();
+        // console.log("📋 Listas carregadas:", lists.length, lists);
+        setUserLists(lists);
+        setShowListModal(true);
       }
     } catch (error) {
       console.error("❌ Erro:", error);
       Alert.alert("❌ Erro", "Não foi possível realizar a ação");
+      setLoadingAction(false);
+    }
+  };
+
+  const handleCreateNewList = async () => {
+    if (!newListName.trim()) {
+      Alert.alert("Atenção", "Digite um nome para a lista");
+      return;
+    }
+
+    try {
+      setLoadingAction(true);
+      const { createUserList } = await import("../../services/userMedia");
+      await createUserList(newListName.trim());
+      await addToSpecificList(newListName.trim());
+      setNewListName("");
+      setShowListModal(false);
+    } catch (error) {
+      console.error("Erro ao criar lista:", error);
+      Alert.alert("Erro", "Não foi possível criar a lista");
+    } finally {
+      setLoadingAction(false);
+    }
+  };
+
+  const addToSpecificList = async (listName?: string) => {
+    try {
+      const mediaId = parseInt(id);
+      const title = details!.title || details!.name || "Sem título";
+
+      const success = await addMediaToList({
+        mediaId,
+        mediaType: type,
+        title,
+        posterPath: details!.poster_path || "",
+        status: "quero_assistir",
+        genres: details!.genres.map((g) => g.name),
+        listName,
+      });
+
+      if (success) {
+        setUserMedia({
+          id: "temp",
+          userId: "",
+          mediaId,
+          mediaType: type,
+          title,
+          posterPath: details!.poster_path || "",
+          status: "quero_assistir",
+          genres: details!.genres.map((g) => g.name),
+          listName,
+          addedAt: new Date() as any,
+          updatedAt: new Date() as any,
+        });
+        Alert.alert("✅ Sucesso", `Adicionado em "${listName}"!`);
+      } else {
+        Alert.alert("❌ Erro", "Verifique se você está logado");
+      }
+    } catch (error) {
+      console.error("❌ Erro ao adicionar:", error);
+      Alert.alert("❌ Erro", "Não foi possível adicionar");
     } finally {
       setLoadingAction(false);
     }
@@ -157,14 +220,56 @@ export default function MediaDetails() {
 
     try {
       const mediaId = parseInt(id);
+
+      // Atualizar estado local imediatamente para feedback visual instantâneo
+      setUserMedia({ ...userMedia, status });
+
+      // Atualizar no Firestore em background
       const success = await updateMediaStatus(mediaId, type, status);
-      if (success) {
-        await checkMediaInList();
-        Alert.alert("Sucesso", "Status atualizado!");
+
+      if (!success) {
+        // Reverter se falhar
+        setUserMedia(userMedia);
+        Alert.alert("Erro", "Não foi possível atualizar o status");
       }
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
+      setUserMedia(userMedia); // Reverter
       Alert.alert("Erro", "Não foi possível atualizar o status");
+    }
+  };
+
+  const handleRatingChange = async (rating: number) => {
+    if (!userMedia) {
+      Alert.alert("Atenção", "Adicione à sua lista primeiro para avaliar!");
+      return;
+    }
+
+    try {
+      const { updateMediaRating } = await import("../../services/userMedia");
+      const mediaId = parseInt(id);
+
+      // Atualizar estado local imediatamente para feedback visual instantâneo
+      setUserMedia({ ...userMedia, rating });
+
+      // Atualizar no Firestore em background
+      const success = await updateMediaRating(
+        mediaId,
+        type,
+        rating,
+        userMedia.review
+      );
+
+      if (!success) {
+        // Reverter se falhar
+        setUserMedia(userMedia);
+        Alert.alert("Erro", "Não foi possível salvar a avaliação");
+      }
+      // Sucesso silencioso - sem Alert para não interromper a experiência
+    } catch (error) {
+      console.error("Erro ao avaliar:", error);
+      setUserMedia(userMedia); // Reverter
+      Alert.alert("Erro", "Não foi possível salvar a avaliação");
     }
   };
 
@@ -453,6 +558,29 @@ export default function MediaDetails() {
             </View>
           )}
 
+          {/* Avaliação com Estrelas */}
+          {userMedia && (
+            <View style={styles.ratingSection}>
+              <Text style={styles.ratingSectionTitle}>⭐ Sua Avaliação</Text>
+              <StarRating
+                rating={userMedia.rating || 0}
+                onRatingChange={handleRatingChange}
+                size={40}
+                showValue={true}
+              />
+              {userMedia.rating && userMedia.rating > 0 && (
+                <Text style={styles.ratingHint}>
+                  Toque nas estrelas para alterar sua avaliação
+                </Text>
+              )}
+              {(!userMedia.rating || userMedia.rating === 0) && (
+                <Text style={styles.ratingHint}>
+                  Toque nas estrelas para avaliar
+                </Text>
+              )}
+            </View>
+          )}
+
           {/* Sinopse */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Sinopse</Text>
@@ -626,6 +754,100 @@ export default function MediaDetails() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Modal para selecionar lista */}
+      <Modal
+        visible={showListModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowListModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Adicionar à Lista</Text>
+              <TouchableOpacity onPress={() => setShowListModal(false)}>
+                <MaterialIcons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Input para nova lista */}
+            <View style={styles.newListContainer}>
+              <TextInput
+                style={styles.newListInput}
+                placeholder="Nome da nova lista..."
+                placeholderTextColor="#999"
+                value={newListName}
+                onChangeText={setNewListName}
+              />
+              <TouchableOpacity
+                style={styles.createListButton}
+                onPress={handleCreateNewList}
+                disabled={loadingAction}
+              >
+                <MaterialIcons name="add" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Lista de listas existentes */}
+            <Text style={styles.listSectionTitle}>
+              Suas Listas ({userLists.length})
+            </Text>
+            {userLists.length > 0 ? (
+              <ScrollView
+                style={styles.listContainer}
+                showsVerticalScrollIndicator={true}
+              >
+                {userLists.map((item, index) => {
+                  // console.log(`📋 Renderizando lista ${index}:`, item.name);
+                  return (
+                    <TouchableOpacity
+                      key={item.id || index.toString()}
+                      style={styles.listOption}
+                      onPress={async () => {
+                        // console.log("🎯 Clicou na lista:", item.name);
+                        try {
+                          setLoadingAction(true);
+                          await addToSpecificList(item.name);
+                          setShowListModal(false);
+                        } catch (error) {
+                          console.error("Erro ao adicionar:", error);
+                        } finally {
+                          setLoadingAction(false);
+                        }
+                      }}
+                      disabled={loadingAction}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons
+                        name="playlist-add"
+                        size={24}
+                        color={themas.colors.Secondary}
+                      />
+                      <Text style={styles.listOptionText}>{item.name}</Text>
+                      <MaterialIcons
+                        name="chevron-right"
+                        size={24}
+                        color="#666"
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <View style={styles.emptyListContainer}>
+                <MaterialIcons name="playlist-add" size={48} color="#666" />
+                <Text style={styles.emptyListText}>
+                  Nenhuma lista criada ainda
+                </Text>
+                <Text style={styles.emptyListHint}>
+                  Crie sua primeira lista acima
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
